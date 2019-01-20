@@ -10,7 +10,8 @@
 #include <SPI.h> 
 
 //#define DEBUG_NET
-#define DEBUG_PROTOCOL
+//#define DEBUG_PROTOCOL
+//#define DEBUG
 
 //#define REPEATER
 
@@ -71,7 +72,7 @@ boolean ERRORS[ERRORS_WINDOW_SIZE];
 /////// LoRa end
 
 void setup() {
-  #if  defined (DEBUG_NET)  || defined (DEBUG_PROTOCOL)
+  #if defined (DEBUG_NET)  || defined (DEBUG)  || defined (DEBUG_PROTOCOL)
   Serial.begin(9600);
   Serial.setTimeout(1);
   #endif
@@ -125,19 +126,28 @@ void loop() {
   int speedIncreaseReqCount = 0;
   int tooFastAttempt = 0;
 
-  long lastMessageReceivedTimestamp = esp_timer_get_time();
-  long lastValidMessageReceivedTimestamp = esp_timer_get_time();
+  unsigned long lastMessageReceivedTimestamp = esp_timer_get_time();
+  unsigned long lastValidMessageReceivedTimestamp = esp_timer_get_time();
 
   #ifdef DEBUG_PROTOCOL
   Serial.println("Message session reset.");
+  #endif
+
+  #ifdef DEBUG
+  Serial.println("Will enter main loop");
+  char mystr[40];
+  sprintf(mystr,"%u",esp_timer_get_time());
+  Serial.println("esp_timer_get_time: " + String((char*) mystr));
+  Serial.println("lastValidMessageReceivedTimestamp: " + String(lastValidMessageReceivedTimestamp, DEC));
+  Serial.println("LINK_DEAD_TIMEOUT: " + String(LINK_DEAD_TIMEOUT, DEC));
   #endif
   
   while ((lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
   
     tooFastAttempt ++;
     //int tooFastTimeout = (TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate] * max(1, tooFastAttempt));
-    int tooFastDeadline = esp_timer_get_time() + TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
-    
+    unsigned long tooFastDeadline = esp_timer_get_time() + TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
+
     //while ((lastMessageReceivedTimestamp + tooFastTimeout) > esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
     while (tooFastDeadline >= esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
     
@@ -256,10 +266,10 @@ void loop() {
   int speedIncreaseReqCount = 0;
   int ackTimeoutCount = 0;
   
-  long lastMessageReceivedTimestamp = esp_timer_get_time();
-  long lastValidMessageReceivedTimestamp = esp_timer_get_time();
-  long lastMessageSentTimestamp = esp_timer_get_time();
-  long lastTooFastTimeout = 0;
+  unsigned long lastMessageReceivedTimestamp = esp_timer_get_time();
+  unsigned long lastValidMessageReceivedTimestamp = esp_timer_get_time();
+  unsigned long lastMessageSentTimestamp = esp_timer_get_time();
+  unsigned long lastTooFastTimeout = 0;
 
   #ifdef DEBUG_PROTOCOL
   Serial.println("Message session reset. New sessionId: " + sessionId);
@@ -275,7 +285,7 @@ void loop() {
     
     tooFastAttempt ++;
     //int tooFastTimeout = (TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate] * max(1, tooFastAttempt));
-    int tooFastDeadline = esp_timer_get_time() + TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
+    unsigned long tooFastDeadline = esp_timer_get_time() + TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
     
     //while ((lastMessageReceivedTimestamp + tooFastTimeout) > esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
     while (tooFastDeadline >= esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
@@ -342,7 +352,7 @@ void loop() {
           seqId = msgSeqId + 1;
           lastValidMessageReceivedTimestamp = lastMessageReceivedTimestamp;
 
-          long pingTime = lastValidMessageReceivedTimestamp - lastMessageSentTimestamp;
+          unsigned long pingTime = lastValidMessageReceivedTimestamp - lastMessageSentTimestamp;
           updateReceivedScreenDisplay(String(pingTime/1000, DEC), airRate, String(messageCountForFixedAirRate, DEC) + " / " + String(sequentialValidMessages, DEC), String(ackAttempt, DEC) + " / " + String(ackTimeoutCount, DEC), receivedMsg);
 
           if (msgRequestedAirRate > 0 && msgRequestedAirRate == airRate + 1) {
@@ -526,6 +536,10 @@ int sendLoraMessage(String message) {
 void configLora(int airRate) {
   // serial port 9600 & 8N1 for sleep mode only
 
+  // Set Mode 0 Normal
+  digitalWrite(LORA_M0, LOW); 
+  digitalWrite(LORA_M1, LOW); 
+
   #ifdef DEBUG_PROTOCOL
   Serial.println("Setup LoRa device...");
   Serial.println("Selected airRate: " + String(airRate, DEC));
@@ -598,6 +612,19 @@ void configLora(int airRate) {
     //delay(10);
   } while(config[3] != LORA_BUFFER[3]);
 
+  waitLoraAvailable();
+
+  #ifdef DEBUG
+  writeLora(askSavedParameters, 3);
+  
+  waitLoraAvailable();
+
+  int lenResp = readLora(LORA_BUFFER);
+  Serial.print("LoRa saved parameters: ");
+  PrintHex8(LORA_BUFFER, lenResp);
+  Serial.println("");
+  #endif
+
   /*
   waitLoraAvailable();
 
@@ -607,11 +634,6 @@ void configLora(int airRate) {
 
   
   len = readLora(LORA_BUFFER);
-  #ifdef DEBUG_PROTOCOL
-  Serial.print("LoRa saved parameters: ");
-  PrintHex8(LORA_BUFFER, len);
-  Serial.println("");
-  #endif
   */
     
   // Set Mode 0 Normal
