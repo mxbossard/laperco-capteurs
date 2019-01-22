@@ -71,11 +71,22 @@ boolean ERRORS[ERRORS_WINDOW_SIZE];
 
 /////// LoRa end
 
+char int64ToStringBuffer[40];
+String int64ToString(int64_t input) {
+  sprintf(int64ToStringBuffer, "%u", input);
+  return String((char*) int64ToStringBuffer);
+}
+
 void setup() {
   #if defined (DEBUG_NET)  || defined (DEBUG)  || defined (DEBUG_PROTOCOL)
   Serial.begin(9600);
   Serial.setTimeout(1);
   #endif
+
+  #ifdef DEBUG
+  Serial.println("setup()");
+  #endif
+  
 
   #ifndef REPEATER
   initScreenDisplay();
@@ -84,6 +95,7 @@ void setup() {
 }
 
 void init() {
+
   pinMode(BLUE_LED, OUTPUT);
   digitalWrite(BLUE_LED, LOW); // switch off blue LED
 
@@ -93,14 +105,7 @@ void init() {
   }
   
   configLora(0);
-
-  for (int k=0; k<ERRORS_WINDOW_SIZE; k++) {
-    ERRORS[k] = false;
-  }
 }
-
-
-int errorIndex = 0;
 
 void loop() {
 
@@ -126,8 +131,8 @@ void loop() {
   int speedIncreaseReqCount = 0;
   int tooFastAttempt = 0;
 
-  unsigned long lastMessageReceivedTimestamp = esp_timer_get_time();
-  unsigned long lastValidMessageReceivedTimestamp = esp_timer_get_time();
+  int64_t lastMessageReceivedTimestamp = esp_timer_get_time();
+  int64_t lastValidMessageReceivedTimestamp = esp_timer_get_time();
 
   #ifdef DEBUG_PROTOCOL
   Serial.println("Message session reset.");
@@ -135,22 +140,20 @@ void loop() {
 
   #ifdef DEBUG
   Serial.println("Will enter main loop");
-  char mystr[40];
-  sprintf(mystr,"%u",esp_timer_get_time());
-  Serial.println("esp_timer_get_time: " + String((char*) mystr));
+  Serial.println("esp_timer_get_time: " + int64ToString(esp_timer_get_time()));
   Serial.println("lastValidMessageReceivedTimestamp: " + String(lastValidMessageReceivedTimestamp, DEC));
   Serial.println("LINK_DEAD_TIMEOUT: " + String(LINK_DEAD_TIMEOUT, DEC));
+  bool val = (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time();
+  Serial.println("boolean expr: " + String(val));
   #endif
   
   while ((lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
-  
-    tooFastAttempt ++;
-    //int tooFastTimeout = (TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate] * max(1, tooFastAttempt));
-    unsigned long tooFastDeadline = esp_timer_get_time() + TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
 
-    //while ((lastMessageReceivedTimestamp + tooFastTimeout) > esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
+    tooFastAttempt ++;
+    int64_t tooFastDeadline = esp_timer_get_time() + TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
+
     while (tooFastDeadline >= esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
-    
+
       String receivedMsg = receiveLoraMesssage();
       if (receivedMsg == "") {
         // Continue looping if no message
@@ -266,10 +269,10 @@ void loop() {
   int speedIncreaseReqCount = 0;
   int ackTimeoutCount = 0;
   
-  unsigned long lastMessageReceivedTimestamp = esp_timer_get_time();
-  unsigned long lastValidMessageReceivedTimestamp = esp_timer_get_time();
-  unsigned long lastMessageSentTimestamp = esp_timer_get_time();
-  unsigned long lastTooFastTimeout = 0;
+  int64_t lastMessageReceivedTimestamp = esp_timer_get_time();
+  int64_t lastValidMessageReceivedTimestamp = esp_timer_get_time();
+  int64_t lastMessageSentTimestamp = esp_timer_get_time();
+  int64_t lastTooFastTimeout = 0;
 
   #ifdef DEBUG_PROTOCOL
   Serial.println("Message session reset. New sessionId: " + sessionId);
@@ -284,10 +287,8 @@ void loop() {
   while (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT > esp_timer_get_time()) {
     
     tooFastAttempt ++;
-    //int tooFastTimeout = (TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate] * max(1, tooFastAttempt));
-    unsigned long tooFastDeadline = esp_timer_get_time() + TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
+    int64_t tooFastDeadline = esp_timer_get_time() + TOO_FAST_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
     
-    //while ((lastMessageReceivedTimestamp + tooFastTimeout) > esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
     while (tooFastDeadline >= esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
       // Try to send a message and get an ACK for TOO_FAST_TIMEOUT
 
@@ -309,7 +310,6 @@ void loop() {
       ackAttempt ++;
       int waitAckTimeout = WAIT_ACK_TIMEOUT * AIR_RATE_TIMEOUT_MULTIPLIER[airRate];
       
-      //while (notAckedMessage && (lastMessageSentTimestamp + waitAckTimeout) > esp_timer_get_time() && (lastMessageReceivedTimestamp + tooFastTimeout) > esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
       while (notAckedMessage && (lastMessageSentTimestamp + waitAckTimeout) > esp_timer_get_time() && tooFastDeadline >= esp_timer_get_time() && (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time()) {
         // Try to get an ACK for WAIT_ACK_TIMEOUT
 
@@ -352,8 +352,8 @@ void loop() {
           seqId = msgSeqId + 1;
           lastValidMessageReceivedTimestamp = lastMessageReceivedTimestamp;
 
-          unsigned long pingTime = lastValidMessageReceivedTimestamp - lastMessageSentTimestamp;
-          updateReceivedScreenDisplay(String(pingTime/1000, DEC), airRate, String(messageCountForFixedAirRate, DEC) + " / " + String(sequentialValidMessages, DEC), String(ackAttempt, DEC) + " / " + String(ackTimeoutCount, DEC), receivedMsg);
+          int64_t pingTime = (lastValidMessageReceivedTimestamp - lastMessageSentTimestamp) / 1000;
+          updateReceivedScreenDisplay(int64ToString(pingTime), airRate, String(messageCountForFixedAirRate, DEC) + " / " + String(sequentialValidMessages, DEC), String(ackAttempt, DEC) + " / " + String(ackTimeoutCount, DEC), receivedMsg);
 
           if (msgRequestedAirRate > 0 && msgRequestedAirRate == airRate + 1) {
             // Received an ack for a changing air rate request
@@ -374,17 +374,15 @@ void loop() {
             }
           }
    
-        } else {
-          sequentialValidMessages = 0;
         }
       }
 
       if (notAckedMessage) {
+        sequentialValidMessages = 0;
         speedIncreaseReqCount = 0;
-        messageCountForFixedAirRate = 0;
+        //messageCountForFixedAirRate = 0;
         ackTimeoutCount ++;
         updateReceivedScreenDisplay("-", airRate, String(messageCountForFixedAirRate, DEC) + " / " + String(sequentialValidMessages, DEC), String(ackAttempt, DEC) + " / " + String(ackTimeoutCount, DEC), "-");
-        //updateScreenDisplay("-", airRate, sequentialValidMessages, message, "-");
       }
 
     }
