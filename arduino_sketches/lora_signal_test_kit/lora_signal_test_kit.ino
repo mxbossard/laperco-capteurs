@@ -81,12 +81,10 @@ void setup() {
   #if defined (DEBUG_NET)  || defined (DEBUG)  || defined (DEBUG_PROTOCOL)
   Serial.begin(9600);
   Serial.setTimeout(1);
-  #endif
-
-  #ifdef DEBUG
   Serial.println("setup()");
+  Serial.end();
+  Serial.begin(9600);
   #endif
-  
 
   #ifndef REPEATER
   initScreenDisplay();
@@ -108,14 +106,14 @@ void init() {
 }
 
 void loop() {
+  
+  // blink led for 500ms
+  digitalWrite(BLUE_LED, HIGH);
+  delay(1000);
+  digitalWrite(BLUE_LED, LOW);
 
   // If we loop reinit.
   init();
-
-  // blink led for 500ms
-  digitalWrite(BLUE_LED, HIGH);
-  delay(500);
-  digitalWrite(BLUE_LED, LOW);
 
   #ifdef REPEATER
   // LoRa repeater
@@ -141,7 +139,7 @@ void loop() {
   #ifdef DEBUG
   Serial.println("Will enter main loop");
   Serial.println("esp_timer_get_time: " + int64ToString(esp_timer_get_time()));
-  Serial.println("lastValidMessageReceivedTimestamp: " + String(lastValidMessageReceivedTimestamp, DEC));
+  Serial.println("lastValidMessageReceivedTimestamp: " + int64ToString(lastValidMessageReceivedTimestamp));
   Serial.println("LINK_DEAD_TIMEOUT: " + String(LINK_DEAD_TIMEOUT, DEC));
   bool val = (lastValidMessageReceivedTimestamp + LINK_DEAD_TIMEOUT) > esp_timer_get_time();
   Serial.println("boolean expr: " + String(val));
@@ -418,7 +416,8 @@ void loop() {
 }
 
 void initScreenDisplay() {
-  tft.init(240, 240);   
+  tft.init(240, 240);
+  tft.setTextWrap(false);
 
   tft.fillScreen(ST77XX_BLACK);
   tft.setTextSize(2);
@@ -552,9 +551,6 @@ void configLora(int airRate) {
   pinMode(LORA_M0, OUTPUT);
   pinMode(LORA_M1, OUTPUT);
   pinMode(LORA_AUX, INPUT);
-
-  MySerial.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
-  MySerial.setTimeout(LORA_UART_TIMEOUT);
   
   // Wait AUX to be High indicating the RESET is complete. 
   waitLoraAvailable();
@@ -581,15 +577,16 @@ void configLora(int airRate) {
   byte askDeviceVersion[] = {0xC3, 0xC3, 0xC3};
   byte resetDevice[] = {0xC4, 0xC4, 0xC4};
 
+  // Wait until last moment to enable Serial, if not AUX is stuck in LOW state.
+  MySerial.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
+  MySerial.setTimeout(LORA_UART_TIMEOUT);
+  
   int len;
 
   /*
   waitLoraAvailable();
-  
   writeLora(askDeviceVersion, 3);
-  
   waitLoraAvailable();
-
   readLora(LORA_BUFFER);
   */
   
@@ -625,11 +622,8 @@ void configLora(int airRate) {
 
   /*
   waitLoraAvailable();
-
   writeLora(askSavedParameters, 3);
-  
   waitLoraAvailable();
-
   
   len = readLora(LORA_BUFFER);
   */
@@ -643,6 +637,8 @@ void configLora(int airRate) {
   #ifdef DEBUG_PROTOCOL
   Serial.println("LoRa is in normal mode.");
   #endif
+  
+  blinkLedTwice();
 }
 
 int writeLora(byte *data, int length) {
@@ -689,4 +685,17 @@ void PrintHex8(uint8_t *data, uint8_t length) {
     sprintf(tmp, "0x%.2X",data[i]);
     Serial.print(tmp); Serial.print(" ");
   }
+}
+
+void blinkLedTwice() {
+  // blink led for 300ms twice
+  delay(100);
+  digitalWrite(BLUE_LED, HIGH);
+  delay(200);
+  digitalWrite(BLUE_LED, LOW);
+  delay(100);
+  digitalWrite(BLUE_LED, HIGH);
+  delay(200);
+  digitalWrite(BLUE_LED, LOW);
+  delay(100);
 }
