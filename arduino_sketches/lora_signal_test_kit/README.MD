@@ -1,4 +1,7 @@
 # Description
+
+Le projet est décrit ici : https://ressources.labomedia.org/max_lora_test_kit
+
 This kit is composed of :
 * a mobile transceiver wich display on a screen LoRa signal quality
 * a fixed station which acknowledged mobile device messages
