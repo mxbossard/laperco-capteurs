@@ -229,10 +229,10 @@ void endSpi() {
 void initScreen() {
   Serial.println(F("Init screen."));
 
-  SPI.endTransaction();
+  //SPI.endTransaction();
   
-  endSpi();
-  beginScreenSpi();
+  //endSpi();
+  //beginScreenSpi();
 
   tft.init();
 
@@ -259,8 +259,8 @@ void initScreen() {
 
   tft.endWrite();
 
-  endSpi();
-  beginLoraSpi();
+  //endSpi();
+  //beginLoraSpi();
 }
 
 int progressBarIndex = 0;
@@ -273,15 +273,16 @@ void refreshScreen(bool force = false, bool progressBar = false) {
     return;
   }
 
-  Serial.println(F("refreshing screen..."));
+  //Serial.println(F("refreshing screen..."));
 
-  SPI.endTransaction();
+  //SPI.endTransaction();
 
-  endSpi();
-  beginScreenSpi();
+  //endSpi();
+  //beginScreenSpi();
 
-  tft.init();
-  tft.invertDisplay(true);
+  //tft.init();
+  //tft.invertDisplay(true);
+  
   //tft.startWrite();
   
   if (force || screenData->isGpsUpdated()) {
@@ -329,8 +330,8 @@ void refreshScreen(bool force = false, bool progressBar = false) {
   
   tft.endWrite();
 
-  endSpi();
-  beginLoraSpi();
+  //endSpi();
+  //beginLoraSpi();
 }
 
 bool dataToTransmit = false;
@@ -672,10 +673,10 @@ void loop() {
       sensorAcquisition();
       acquisitionCount ++;
       //initScreen();
-      refreshScreen(false, false);
+      //refreshScreen(false, true);
     }
     
-    //refreshScreen(false, true);
+    refreshScreen(false, true);
   }
   
   os_runloop_once();

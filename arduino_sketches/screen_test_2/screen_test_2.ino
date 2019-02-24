@@ -2,16 +2,6 @@
 
 // This will run quite slowly due to the large number of floating point calculations per pixel
 
-//#define ST7789_DRIVER
-//#define TFT_WIDTH  240 // ST7789 240 x 240
-//#define TFT_HEIGHT 240 // ST7789 240 x 240
-
-//#define TFT_CS    -1
-//#define TFT_RST   22 // Or set to -1 and connect to Arduino RESET pin
-//#define TFT_DC    15
-//#define TFT_SCLK  18  // Clock out
-//#define TFT_MOSI  19  // Data out
-
 #include <TFT_eSPI.h> // Hardware-specific library
 #include <SPI.h>
 
