@@ -231,8 +231,8 @@ void initScreen() {
 
   //SPI.endTransaction();
   
-  //endSpi();
-  //beginScreenSpi();
+  endSpi();
+  beginScreenSpi();
 
   tft.init();
 
@@ -259,8 +259,8 @@ void initScreen() {
 
   tft.endWrite();
 
-  //endSpi();
-  //beginLoraSpi();
+  endSpi();
+  beginLoraSpi();
 }
 
 int progressBarIndex = 0;
@@ -277,8 +277,8 @@ void refreshScreen(bool force = false, bool progressBar = false) {
 
   //SPI.endTransaction();
 
-  //endSpi();
-  //beginScreenSpi();
+  endSpi();
+  beginScreenSpi();
 
   //tft.init();
   //tft.invertDisplay(true);
@@ -330,8 +330,8 @@ void refreshScreen(bool force = false, bool progressBar = false) {
   
   tft.endWrite();
 
-  //endSpi();
-  //beginLoraSpi();
+  endSpi();
+  beginLoraSpi();
 }
 
 bool dataToTransmit = false;
@@ -657,7 +657,7 @@ void setup() {
 }
 
 int acquisitionCount = 0;
-int acquisitionPeriod = 20000; // 1 acquisition every 10 sec
+int acquisitionPeriod = 60000; // 1 acquisition every 10 sec
 void loop() {
   unsigned long now = millis();
   if ((now & 512) != 0) {
